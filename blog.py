@@ -14,6 +14,9 @@ template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
                                autoescape = True)
 
+####
+#### CHANGE THIS SECRET KEY!
+####
 secret = 'X-.z=#b-:4RjOn~a$3nCo)/wn/<`8{`gt1+1Zdbx`A1Z$M;.*WE.?&bWT>z+LgUT'
 
 def render_str(template, **params):
@@ -27,6 +30,8 @@ def check_secure_val(secure_val):
     val = secure_val.split('|')[0]
     if secure_val == make_secure_val(val):
         return val
+
+#### Basic handler for blog. Handles basic and frequently used functions
 
 class BlogHandler(webapp2.RequestHandler):
     def write(self, *a, **kw):
@@ -83,6 +88,8 @@ def valid_pw(name, password, h):
 def users_key(group = 'default'):
     return db.Key.from_path('users', group)
 
+#### Create's User model for database - includes user model functions
+
 class User(db.Model):
     name = db.StringProperty(required = True)
     pw_hash = db.StringProperty(required = True)
@@ -117,6 +124,8 @@ class User(db.Model):
 def blog_key(name = 'default'):
     return db.Key.from_path('blogs', name)
 
+#### Create's Post model for database - includes post model functions
+#
 class Post(db.Model):
     subject = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
@@ -130,11 +139,17 @@ class Post(db.Model):
         self._render_text = self.content.replace('\n', '<br>')
         return render_str("post.html", p = self)
 
+
+#### Front Page of Blog - shows all posts
+
 class BlogFront(BlogHandler):
     def get(self):
         posts = Post.all().filter('parent_post =', None).order('-created')
         uid = self.read_secure_cookie('user_id')
         self.render('front.html', posts = posts, uid=uid)
+
+#### Single Post Page - shows individual post based on id in URL.
+#### Also Handles Comments
 
 class PostPage(BlogHandler):
     def get(self, post_id):
@@ -161,6 +176,8 @@ class PostPage(BlogHandler):
             self.error(404)
             return
 
+        post._render_text = post.content.replace('\n', '<br>')
+
         self.render("post.html", post = post, likeText = likeText, totalLikes = totalLikes, uid = uid, comments = comments)
 
     def post(self, post_id):
@@ -179,6 +196,8 @@ class PostPage(BlogHandler):
         else:
             error = "subject and content, please!"
             self.render("post.html", subject=subject, content=content, error=error)
+
+#### Logs a like for the post with the id in url
 
 class LikePage(BlogHandler):
     def get(self, post_id):
@@ -207,6 +226,8 @@ class LikePage(BlogHandler):
             error = 'you can\'t like or unlike you own post'
             self.render("error.html", error = error)
 
+#### Delete's page based on id in url
+
 class DeletePage(BlogHandler):
     def get(self, post_id):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
@@ -225,6 +246,8 @@ class DeletePage(BlogHandler):
             db.delete(key)
 
         self.render("delete.html", error = error)
+
+#### Allows the user of the post to edit page. If they are not the user, display warning.
 
 class EditPage(BlogHandler):
     def get(self, post_id):
@@ -264,11 +287,19 @@ class EditPage(BlogHandler):
             error = "subject and content, please!"
             self.render("edit.html", post = post, error=error)
 
+#### If the user is signed in, allow for the creation of a new post
+
 class NewPost(BlogHandler):
     def get(self):
         uid = self.read_secure_cookie('user_id')
+        # if self.user.email == "brucewpaul@gmail.com":
+        #     self.render("newpost.html",  uid=uid)
+        # elif self.user:
         if self.user:
-            self.render("newpost.html", uid=uid)
+            # error = "you do not have permission to create a post, but you may comment on existing posts"
+            # posts = Post.all().filter('parent_post =', None).order('-created')
+            # self.render('front.html', posts = posts, uid=uid, error=error)
+            self.render("newpost.html",  uid=uid)
         else:
             self.redirect("/login")
 
@@ -289,6 +320,8 @@ class NewPost(BlogHandler):
             error = "subject and content, please!"
             self.render("newpost.html", subject=subject, content=content, error=error)
 
+#### Validation for username, password and email
+
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
 def valid_username(username):
     return username and USER_RE.match(username)
@@ -300,6 +333,8 @@ def valid_password(password):
 EMAIL_RE  = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
 def valid_email(email):
     return not email or EMAIL_RE.match(email)
+
+#### Handles the signup page, shows error if the fields do not match the validation's above.
 
 class Signup(BlogHandler):
     def get(self):
@@ -338,6 +373,8 @@ class Signup(BlogHandler):
     def done(self, *a, **kw):
         raise NotImplementedError
 
+#### Create new user for blog
+
 class Register(Signup):
     def done(self):
         #make sure the user doesn't already exist
@@ -351,6 +388,8 @@ class Register(Signup):
 
             self.login(u)
             self.redirect('/')
+
+#### Handles login for blog
 
 class Login(BlogHandler):
     def get(self):
@@ -368,10 +407,14 @@ class Login(BlogHandler):
             msg = 'Invalid login'
             self.render('login.html', error = msg)
 
+#### Log's out user
+
 class Logout(BlogHandler):
     def get(self):
         self.logout()
         self.redirect('/')
+
+#### Welcome page after a user succesfully logs in
 
 class Welcome(BlogHandler):
     def get(self):
