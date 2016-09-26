@@ -259,7 +259,6 @@ class EditPage(BlogHandler):
             self.error(404)
             return
 
-        print(post.subject)
         uid = self.read_secure_cookie('user_id')
 
         if post.user_id != uid:
@@ -272,10 +271,13 @@ class EditPage(BlogHandler):
     def post(self, post_id):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
         post = db.get(key)
+
+        uid = self.read_secure_cookie('user_id')
+
         subject = self.request.get('subject')
         content = self.request.get('content')
 
-        if subject and content:
+        if subject and content and post.user_id == uid:
             post.subject = subject
             post.content = content
             post.put()
