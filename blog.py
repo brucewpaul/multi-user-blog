@@ -146,6 +146,7 @@ class BlogFront(BlogHandler):
     def get(self):
         posts = Post.all().filter('parent_post =', None).order('-created')
         uid = self.read_secure_cookie('user_id')
+
         self.render('front.html', posts = posts, uid=uid)
 
 #### Single Post Page - shows individual post based on id in URL.
